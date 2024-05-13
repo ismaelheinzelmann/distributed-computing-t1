@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: user
+  datasource:
+    username: ${DB_LOGIN:ismael}
+    password: ${DB_PASSWORD:matheus}
+    url: ${DB_URL:jdbc:mysql://t1-database:3306/cloudftp}
+  jpa:
+    database-platform: org.hibernate.dialect.MySQL8Dialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    generate-ddl: true
+
+server:
+  port: ${PORT:8081}

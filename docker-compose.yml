@@ -1,0 +1,247 @@
+version: '3.3'
+services:
+  db:
+    image: mysql:5.7
+    restart: always
+    container_name: t1-database
+    environment:
+      MYSQL_DATABASE: 'mysql'
+      MYSQL_USER: 'ismael'
+      MYSQL_PASSWORD: 'matheus'
+      MYSQL_ROOT_PASSWORD: 'novais'
+    ports:
+      - '3306:3306'
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/1.sql
+      - ./my-db:/var/lib/mysql
+    networks:
+      - distribuida
+  gateway:
+    image: gateway:latest
+    container_name: gateway
+    environment:
+      - DB_LOGIN=ismael
+      - DB_PASSWORD=matheus
+      - DB_URL=jdbc:mysql://t1-database:3306/GATEWAY
+    ports:
+      - "8080:8081"
+#      - "5005:5005"
+    networks:
+      - distribuida
+    depends_on:
+      db:
+        condition: service_started
+#    command: java -agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5005 -Djava.security.egd=file:/dev/./urandom -jar gateway.jar
+
+  user-balancer:
+    image: balancer:latest
+    container_name: user-balancer
+    environment:
+      - DB_LOGIN=ismael
+      - DB_PASSWORD=matheus
+      - DB_URL=jdbc:mysql://t1-database:3306/USERBALANCER
+#    ports:
+#      - "8081:8081"
+#      - "5006:5005"
+    networks:
+      - distribuida
+    depends_on:
+      db:
+        condition: service_started
+#    command: java -agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5005 -Djava.security.egd=file:/dev/./urandom -jar load_balancer.jar
+
+  repository-balancer:
+    image: balancer:latest
+    container_name: repository-balancer
+    environment:
+      - DB_LOGIN=ismael
+      - DB_PASSWORD=matheus
+      - DB_URL=jdbc:mysql://t1-database:3306/REPOSITORYBALANCER
+#    ports:
+##      - "8082:8081"
+#      - "5006:5005"
+    networks:
+      - distribuida
+    depends_on:
+      db:
+        condition: service_started
+#    command: java -agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5005 -Djava.security.egd=file:/dev/./urandom -jar load_balancer.jar
+
+  user-1:
+    image: user:latest
+    container_name: user-1
+    environment:
+      - DB_LOGIN=ismael
+      - DB_PASSWORD=matheus
+      - DB_URL=jdbc:mysql://t1-database:3306/CLOUDFTP
+#    ports:
+#      - "8090:8081"
+    #      - "5006:5005"
+    networks:
+      - distribuida
+    depends_on:
+      db:
+        condition: service_started
+      user-balancer:
+        condition: service_started
+    #    command: java -agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5005 -Djava.security.egd=file:/dev/./urandom -jar load_balancer.jar
+
+  user-2:
+    image: user:latest
+    container_name: user-2
+    environment:
+      - DB_LOGIN=ismael
+      - DB_PASSWORD=matheus
+      - DB_URL=jdbc:mysql://t1-database:3306/CLOUDFTP
+#    ports:
+#      - "8091:8081"
+    #      - "5006:5005"
+    networks:
+      - distribuida
+    depends_on:
+      db:
+        condition: service_started
+      user-balancer:
+        condition: service_started
+    #    command: java -agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5005 -Djava.security.egd=file:/dev/./urandom -jar load_balancer.jar
+
+  repository-1:
+    image: repository:latest
+    container_name: repository-1
+    environment:
+      - DB_LOGIN=ismael
+      - DB_PASSWORD=matheus
+      - DB_URL=jdbc:mysql://t1-database:3306/CLOUDFTP
+      - BOOTSTRAP_SERVER=kafka:29092
+#    ports:
+#      - "8092:8081"
+#      - "5006:5005"
+    networks:
+      - distribuida
+    depends_on:
+      db:
+        condition: service_started
+      kafka:
+        condition: service_started
+      repository-balancer:
+        condition: service_started
+#    command: java -agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5005 -Djava.security.egd=file:/dev/./urandom -jar repository.jar
+
+  repository-2:
+    image: repository:latest
+    container_name: repository-2
+    environment:
+      - DB_LOGIN=ismael
+      - DB_PASSWORD=matheus
+      - DB_URL=jdbc:mysql://t1-database:3306/CLOUDFTP
+      - BOOTSTRAP_SERVER=kafka:29092
+#    ports:
+#      - "8093:8081"
+#      - "5006:5005"
+    networks:
+      - distribuida
+    depends_on:
+      db:
+        condition: service_started
+      kafka:
+        condition: service_started
+      repository-balancer:
+        condition: service_started
+#    command: java -agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5005 -Djava.security.egd=file:/dev/./urandom -jar repository.jar
+
+  ftp-service:
+    image: ftp:latest
+    container_name: ftp-service
+    environment:
+      - FTP_ADDRESS=ftp-server
+      - BOOTSTRAP_SERVER=kafka:29092
+#    ports:
+#      - "8093:8081"
+#      - "5006:5005"
+    networks:
+      - distribuida
+    depends_on:
+      ftp-server:
+        condition: service_started
+      kafka:
+        condition: service_started
+#    command: java -agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5005 -Djava.security.egd=file:/dev/./urandom -jar ftp.jar
+
+  ftp-server:
+    image: stilliard/pure-ftpd
+    container_name: pure-ftpd
+#    ports:
+#      - "21:21"
+#      - "30000-30009:30000-30009"
+    volumes: # remember to replace /folder_on_disk/ with the path to where you want to store the files on the host machine
+      - "./data:/home/ismael/"
+      - "./data/passwd:/etc/pure-ftpd/passwd"
+    environment:
+      - PUBLICHOST=localhost
+      - FTP_USER_NAME=ismael
+      - FTP_USER_PASS=novais
+      - FTP_USER_HOME=/home/ismael
+    restart: always
+    networks:
+      - distribuida
+
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    networks:
+      - distribuida
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_SYNC_LIMIT: 2
+
+  # reachable on 9094 from outside the host and on 29092 from inside docker compose
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - '9094:9094'
+    networks:
+      - distribuida
+    expose:
+      - '29092'
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,OUTSIDE://0.0.0.0:9094
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,OUTSIDE://150.162.66.45:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,OUTSIDE:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: '1'
+      KAFKA_MIN_INSYNC_REPLICAS: '1'
+
+
+  kafka-ui:
+     image: provectuslabs/kafka-ui:latest
+     depends_on:
+       - kafka
+     ports:
+       - "8100:8080"
+     environment:
+       KAFKA_CLUSTERS_0_NAME: local
+       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+     networks:
+       - distribuida
+  http:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - "./data:/usr/share/nginx/html"
+    networks:
+      - distribuida
+
+volumes:
+  my-db:
+networks:
+  distribuida:

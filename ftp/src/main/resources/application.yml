@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: repository
+  kafka:
+    bootstrap-servers: ${BOOTSTRAP_SERVER:kafka:9092}
+    producer:
+      key-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: ${GROUP_ID:0}
+    admin:
+      auto-create: true
+ftp:
+  credentials:
+    user: ${FTP_USER:ismael}
+    password: ${FTP_PASSWORD:novais}
+    host: ${FTP_ADDRESS:localhost}
+    port: ${FTP_PORT:21}
+
+server:
+  port: ${PORT:8081}

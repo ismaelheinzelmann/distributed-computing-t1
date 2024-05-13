@@ -1,0 +1,5 @@
+cd ftp && mvn clean package && docker build . -t ftp && cd ..
+cd gateway && mvn clean package && docker build . -t gateway && cd ..
+cd load_balancer && mvn clean package && docker build . -t balancer && cd ..
+cd repository && mvn clean package && docker build . -t repository && cd ..
+cd user && mvn clean package && docker build . -t user && cd ..
