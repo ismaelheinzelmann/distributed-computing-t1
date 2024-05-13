@@ -240,6 +240,11 @@ services:
       - "./data:/usr/share/nginx/html"
     networks:
       - distribuida
+  app:
+    container_name: front
+    image: front:latest
+    ports:
+      - 3000:3000
 
 volumes:
   my-db:
